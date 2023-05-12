@@ -1,6 +1,7 @@
 
 '''
-The following is for the purpose of building and editing a team of Pokemon using Pandas dataframes
+The following is for the purpose of building and editing a team of Pokemon using Pandas dataframes.
+Dataframes will be manipulated by a user using a GUI in a different file.
 '''
 import os
 import numpy as np
@@ -226,21 +227,17 @@ class Pokemon:
         self.database = database
         
         # Initialize the elements of the Pokemon
-        columns=['National Pokedex No','Lv','M/F','Type 1','Type 2','Nature',
+        columns=['National Pokedex No','Type 1','Type 2','Nature',
                  'Health','Attack','Defense','Special Attack','Special Defense','Speed',
                  'Ability','Item','Move 1','Move 2','Move 3','Move 4','Form']
         
         self.pokemon = pd.DataFrame(columns=columns, index = [0])
         
-        self.moves = pd.DataFrame(columns=['Type','Category','Power','Accuracy','PP','Effect'], 
-                                  index = ['Move 1','Move 2','Move 3','Move 4'])
-        
         # Copy the stats from the pokemon into a dataframe for calculating stats altered by nature
         self.baseStats = self.pokemon[["Health","Attack","Defense","Special Attack","Special Defense","Speed"]].copy()
         
         # Initialize variables to first available options or to None to prevent complications later
-        self.nature = self.database.natureDescription('Hardy')
-        self.pokemon['Lv'],self.pokemon['M/F'],self.pokemon['Nature'] = 100,"F",'Hardy'
+        self.pokemon['Nature'] = 'Hardy'
         self.abilities = self.pokemon['Ability'] = self.pokemon['Item'] = None
         self.pokemon['Move 1'] = self.pokemon['Move 2'] = self.pokemon['Move 3'] = self.pokemon['Move 4'] = None
         
@@ -287,21 +284,13 @@ class Pokemon:
     def changeMove(self, name, a):
         # Only perform if the move isn't already in the Pokemon's moveset
         if((self.pokemon['Move 1'][0] != name) & (self.pokemon['Move 2'][0] != name) &
-           (self.pokemon['Move 3'][0] != name) & (self.pokemon['Move 4'][0] != name) & (a < 4)):
+           (self.pokemon['Move 3'][0] != name) & (self.pokemon['Move 4'][0] != name) & (a <= 4)):
             move = self.database.moveData.description(name)
             
             # Make sure the move is in the database
             if not move.empty:
                 self.formMaintain(self.pokemon['Move '+str(a)][0])
                 self.pokemon['Move '+str(a)] = name
-                self.moves.rename(index = {self.moves.index[a-1]: name}, inplace = True)
-                self.moves.update(move)
-                self.moves.iloc[a-1]["PP"] = str(math.trunc(self.moves.iloc[a-1]["PP"])) + "pp"
-                
-                # Display the accuracy as a percentage value. Only do this if the accuracy is a number value.
-                accuracy = self.moves.iloc[a-1]["Accuracy"]
-                if isinstance(accuracy, int) or isinstance(accuracy, float):
-                    self.moves.iloc[a-1]["Accuracy"] = str(math.trunc(accuracy)) + "%"
                 return "Success"
         return "Fail"
     
@@ -316,6 +305,7 @@ class Pokemon:
         if not ability.empty:
             self.pokemon['Ability'] = ability.index[0]
             return "Success"
+        self.pokemon['Ability'] = None
         return "Fail"
     
     # Changes the Pokemon's held item to be the new name, if it exists in the database.
@@ -324,6 +314,7 @@ class Pokemon:
             self.formMaintain(self.pokemon['Item'][0])
             self.pokemon['Item'] = name
             return "Success"
+        self.pokemon['Item'] = None
         return "Fail"
     
     # Changes the Pokemon's nature to the requested name, if it exists in the database.
@@ -345,6 +336,7 @@ class Pokemon:
                 self.pokemon[increasedStat] = self.pokemon[increasedStat] + 0.1 * self.pokemon[increasedStat]
                 self.pokemon[decreasedStat] = self.pokemon[decreasedStat] - 0.1 * self.pokemon[decreasedStat]
             return "Success"
+        self.pokemon["Nature"] = "Hardy"
         return "Fail"
 
     # This method will take in the form specifier of a Pokemon and perform necessary changes to their held item or attacks to match it.
@@ -386,10 +378,8 @@ class PokemonTeam:
         self.database = database
         self.team = []
         
-        columns=['Lv','M/F','Type 1','Type 2','Nature',
-                 'Health','Attack','Defense','Special Attack','Special Defense','Speed',
-                 'Ability','Item','Move 1','Move 2','Move 3','Move 4']
-        #self.pokemon = pd.DataFrame(columns=columns, index = [0])
+        columns=['Type 1','Type 2','Nature','Health','Attack','Defense','Special Attack',
+                 'Special Defense','Speed','Ability','Item','Move 1','Move 2','Move 3','Move 4']
         self.teamBasic = pd.DataFrame(columns=columns)
         
     # Adds a Pokemon to the team based on an operation given from other methods
@@ -440,20 +430,49 @@ class PokemonTeam:
             self.teamBasic = pd.concat([self.teamBasic, pokemon.pokemon])
         return None
     
-    # Prints a basic summary of all the Pokemon in the team
-    def printTeamBasic(self):
-        print('-'*80)
-        print(self.teamBasic)
-        print("-"*80)
-        return None
+    # Imports a team from an excel document.
+    def teamImport(self, name):
+        # Ensure that a valid name has been given.
+        if (not name):
+            return False
+
+        # If the file name doesn't include the file extension, append it to the name.
+        if (len(name) <= 5) | (name[-5:] != ".xlsx"):
+            name = name + ".xlsx"
+
+        # Ensure that the file exists before attempting to read.
+        if (not os.path.isfile("Saved Teams/"+name)):
+            return False
+
+        teamBasic = pd.read_excel("Saved Teams/"+name, index_col=0)
+        teamBasic = teamBasic.fillna(np.nan).replace([np.nan], [None])
         
-    # Prints in detail every Pokemon in the team
-    def printTeamVerbose(self):
-        print("-"*80)
-        print("-"*80)
-        for index, pokemon in enumerate(self.team):
-            print(f"Team Member {index+1}:")
-            pokemon.printPokemon()
-            print("-"*80)
-        print("-"*80)
-        return None
+        # Clean out the previous team.
+        self.team.clear()
+
+        # Add every Pokemon in the imported team to the team list.
+        for i in range(len(teamBasic)):
+            self.addPokemon(teamBasic.index[i])
+            self.team[i].pokemon["Ability"] = teamBasic.iloc[i]["Ability"]
+            self.team[i].pokemon["Item"] = teamBasic.iloc[i]["Item"]
+            self.team[i].changeNature(teamBasic.iloc[i]["Nature"])
+            self.team[i].pokemon["Move 1"] = teamBasic.iloc[i]["Move 1"]
+            self.team[i].pokemon["Move 2"] = teamBasic.iloc[i]["Move 2"]
+            self.team[i].pokemon["Move 3"] = teamBasic.iloc[i]["Move 3"]
+            self.team[i].pokemon["Move 4"] = teamBasic.iloc[i]["Move 4"]
+
+        return True
+
+    # Exports the current team to an excel document.
+    def teamExport(self, name):
+        # Ensure that the name is valid. Ensure that the team isn't empty.
+        if (not name) | (name == "Pokemon Data.xlsx") | (name == "Pokemon Data.xlsx") | (self.teamBasic.empty):
+            return False
+
+        # If the file name doesn't include the file extension, append it to the name.
+        if (len(name) <= 5) | (name[-5:] != ".xlsx"):
+            name = name + ".xlsx"
+
+        # Export the team to an excel document in the "Saved Teams" folder.
+        self.teamBasic.to_excel("Saved Teams/"+name)
+        return True
