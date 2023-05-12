@@ -1,3 +1,10 @@
+'''
+The following code handles the graphical user interface to build and edit a team of Pokemon.
+Relies on "PokemonDataManager.py" for data management. 
+
+Users can select from lists or type in values to change their team as well as import and export their team
+to and from excel files.
+'''
 
 from pickletools import read_unicodestring1
 import PokemonDataManager as pdm
@@ -90,7 +97,6 @@ def addPokemon(pdb, team, operation, a):
 
     # Return to the previous window
     window.close()
-    #team.printTeamBasic()
     return None
 
 
@@ -188,7 +194,6 @@ def changeMove(pdb, teamMember, a):
 
     # Return to the previous window
     window.close()
-    #team.printTeamBasic()
     return None
 
 
@@ -242,7 +247,6 @@ def changeItem(pdb, teamMember):
 
     # Return to the previous window
     window.close()
-    #team.printTeamBasic()
     return None
 
 
@@ -280,13 +284,13 @@ def changeAbility(pdb, teamMember):
 # This method will return the window of the current team composition when called.
 def teamSelect(team):
     #headings, data = quickToList(team.teamBasic.reset_index())
-    headings = ['Name','Lv','M/F','Type 1','Type 2','Nature','Hp','Atk','Def','SpA','SpD','Spd',
+    headings = ['Name','Type 1','Type 2','Nature','Hp','Atk','Def','SpA','SpD','Spd',
                  'Ability','Item','Move 1','Move 2','Move 3','Move 4']
     data = team.teamBasic.reset_index().values.tolist()
 
     layout = [[sg.Table(values=data, headings=headings, justification='center', key='-TABLE-', enable_events=True, enable_click_events=True)],
               [sg.Button('Add Pokemon',key='_addpokemon_'), sg.Button('Change Pokemon',key='_changepokemon_'), sg.Button('Change Item',key='_changeitem_'),
-               sg.Button('Change Move 1',key='_changem1_'), sg.Button('Change Move 2',key='_changem2_')],
+               sg.Button('Change Move 1',key='_changem1_'), sg.Button('Change Move 2',key='_changem2_'), sg.Button('Import',key='_import_')],
               [sg.Button('Remove Pokemon',key='_removepokemon_'), sg.Button('Change Nature',key='_changenature_'), sg.Button('Change Ability',key='_changeability_'),
                sg.Button('Change Move 3',key='_changem3_'), sg.Button('Change Move 4',key='_changem4_'), sg.Button('Export',key='_export_')],
               ]
@@ -307,7 +311,6 @@ def main():
         elif event == '_addpokemon_':
             window.close()
             addPokemon(pdb, team, "Add", 0)
-            #team.printTeamBasic()
             window = teamSelect(team)
 
         # Remove the selected Pokemon
@@ -380,14 +383,22 @@ def main():
                 changeMove(pdb, team.team[values['-TABLE-'][0]], 4)
                 team.updateBasic()
                 window = teamSelect(team)
-
-        # This event will allow the user to change the Pokemon's 1st move
-        elif event == '_export_':
-            if values['-TABLE-']:
-                window.close()
                 
-                team.updateBasic()
-                window = teamSelect(team)
+        # This event will allow the user to import their team from an excel document.
+        elif event == '_import_':
+            window.close()
+            text = sg.popup_get_text('Enter the name of your team ', title="Import team")
+            team.teamImport(text)
+            team.updateBasic()
+            window = teamSelect(team)
+
+        # This event will allow the user to export their team to an excel document.
+        elif event == '_export_':
+            window.close()
+            text = sg.popup_get_text('Enter a name for your team ', title="Export team")
+            team.teamExport(text)
+            team.updateBasic()
+            window = teamSelect(team)
     
 
 main()
