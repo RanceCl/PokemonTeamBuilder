@@ -400,24 +400,21 @@ class PokemonTeam:
     
     # Remove the Pokemon at position 'a' if it in range.
     def removePokemon(self, a):
-        if (a < len(self.team)) and (a >= 0):
+        try:
             del self.team[a]
             self.updateBasic()
+        except IndexError:
+            pass
         return None
-        
+    
     # Change the species of the Pokemon at position 'a'
     def changeSpecies(self, name, a):
         # Make sure that a is in the possible range. 
-        if (a < len(self.team)) and (a >= 0):
+        try:
             self.team[a].changeSpecies(name)
             self.updateBasic()
-        return None
-    
-    # Swap the positions of the Pokemon at position 'a' and position 'b'
-    def swapPokemon(self, a, b):
-        if (a < len(self.team)) and (a >= 0) and (b < len(self.team)) and (b >= 0):
-            self.team[b], self.team[a] = self.team[a], self.team[b]
-            self.updateBasic()
+        except IndexError:
+            pass
         return None
     
     # Updates the basic dataset. This is done so that repeated Pokemon can be included in the dataframe without complications.
