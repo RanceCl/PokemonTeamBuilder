@@ -10,82 +10,124 @@ import math
 import matplotlib.pyplot as plt
 
 
-# Class to hold the dataframe for every Pokemon species as well as the filter methods.
-class PokemonData:
+# Parent class to hold the dataframe for different data type (e.g., Pokemon, Moves, Items) and filter methods.
+class Data:
     def __init__(self, data):
         self.data = data
-        self.data['Abilities'] =  data['Abilities'].str.split(',') #Make abilities into an array
         self.data = self.data.fillna("-")
         self.filtered = self.data
+        self.filters = {}
+        self.nameFilter = ""
+
+    # Returns the data for the requested element if it is in the database
+    def elementInfo(self,name):
+        return self.data[self.data.index == name]
+
+    # Filters the data based on specified filter data.
+    def filterData(self):
+        # Filtered data is reset so that updated filters won't rely on the old data.
+        self.filtered = self.data.copy()
+
+        # Filters the data based on what filters have been added. This is performed on the original dataset. 
+        for filter_name, filter_value in self.filters.items():
+            # Before each filter, the filtered dataframe is checked to make sure it isn't entirely empty as filtering an empty dataframe will remove columns.
+            if filter_value != "" and not self.filtered.empty:
+                self.filtered = self.filtered[(self.filtered[filter_name] == filter_value)]
+        return None
+    
+    # Filters data based on name. This is separate since the filter conditions are different.
+    def filterName(self):
+        # Filters the data based on if the names contain the string that they are being filtered against.
+        if (self.nameFilter != "") & (not self.filtered.empty):
+            self.filtered = self.filtered[self.filtered.index.str.contains(self.nameFilter, case=False)]
+        return None
+
+    # Places an empty filter value into the filter name if no filter value was given.
+    def isEmptyFilterValue(self, filter_value):
+        if filter_value == None:
+            return ""
+        return filter_value
+
+    # Adds a new filter to be applied to the data. Each filter value and its corresponding column are stored in a dictionary.
+    def addFilter(self, filter_name, filter_value):
+        # Name filter is separate from other filters and is thus not to be placed in the dictionary.
+        if filter_name == "Name":
+            self.nameFilter = self.isEmptyFilterValue(filter_value)
+        # Any other filter value will be placed into the filters dictionary
+        else:
+            self.filters[filter_name] = self.isEmptyFilterValue(filter_value)
+        return None
+
+    # Performs all the necessary filter methods.
+    def quickFilter(self, filter_name, filter_value):
+        self.addFilter(filter_name, filter_value)
+        self.filterData()
+        self.filterName()
+        return self.filtered
+
+    def filterReset(self):
+        self.filters = {}
+        self.filtered = self.data.copy()
+        return self.filtered
+
+# Class to hold the dataframe for every Pokemon species as well as the filter methods.
+class PokemonData(Data):
+    def __init__(self, data):
+        super().__init__(data)
+        self.data['Abilities'] =  data['Abilities'].str.split(',') #Make abilities into an array
+        self.filtered = self.data.copy()
 
         #Ability filters start as empty. "" indicates that the filter shouldn't be implemented
         self.typeFilter = ""
         self.abilityFilter = ""
-        self.nameFilter = ""
-
-    # Returns the stats of the requested Pokemon if the Pokemon is in the database
-    def stats(self, name):
-        return self.data[self.data.index == name]
     
     # Finds the Pokemon with with the Pokemon matching index number
     def index(self, pokedexNumber):
         return self.data[self.data['National Pokedex No'] == pokedexNumber]
-        
-    # Filters the datarame based on all of the specified filters.
-    def filterData(self):
-        # Resets the filtered data. This is so that updated filters won't rely on the old data.
-        self.filtered = self.data
-        
-        # The following three filters are applied to the original dataset. 
-        # Before each filter, the filtered dataframe is checked to make sure it isn't entirely empty as filtering an empty dataframe will remove columns.
-        # Filters the data based on the desired type. Searches type 1 and type 2 slot.
+
+    # Filters the Pokemon based on the desired type. Both Type 1 and Type 2 are checked.
+    def filterType(self):
         if (self.typeFilter != "") & (not self.filtered.empty):
+            # Searches type 1 and type 2 slot.
             self.filtered = self.filtered[
                 (self.filtered['Type 1'] == self.typeFilter) | 
                 (self.filtered['Type 2'] == self.typeFilter)]
-        
-        # Filters the data based on the desired ability
+        return None
+
+    # Filters the Pokemon based on the desired ability. 
+    def filterAbility(self):
         if (self.abilityFilter != "") & (not self.filtered.empty):
+            # Checks the entire array of abilities available to a Pokemon.
             self.filtered = self.filtered[
                 [(self.abilityFilter in x) for x in self.filtered['Abilities']]]
+        return None
 
-        # Filters the data based on if the names contain the string that they are being filtered against.
-        if (self.nameFilter != "") & (not self.filtered.empty):
-            self.filtered = self.filtered[self.filtered.index.str.contains(self.nameFilter, case=False)]
-        
+    # Adds the filters to be applied to the data.
+    def addFilter(self, filter_name, filter_value):
+        if filter_name == "Name":
+            self.nameFilter = self.isEmptyFilterValue(filter_value)
+        elif filter_name == "Type":
+            self.typeFilter = self.isEmptyFilterValue(filter_value)
+        elif filter_name == "Ability":
+            self.abilityFilter = self.isEmptyFilterValue(filter_value)
+        return None
+
+    # Filters the datarame based on all of the specified filters.
+    # Due to how unique the filters for this dataset is, specifically, a separate method was created from the standard data.
+    # Performs all the necessary filter methods
+    def quickFilter(self, filter_name, filter_value):
+        self.filtered = self.data.copy()
+        self.addFilter(filter_name, filter_value)
+        self.filterType()
+        self.filterAbility()
+        self.filterName()
         return self.filtered
 
-    # This method will filter the dataset to only include Pokemon with names including the desired string.
-    def filterName(self, name):
-        if name == None:
-            self.nameFilter = ""
-        else:
-            self.nameFilter = name
-        return self.filterData()
-    
-    # This method will filter the dataset to only include Pokemon of the desired type.
-    def filterType(self, name):
-        if name == None:
-            self.typeFilter = ""
-        else:
-            self.typeFilter = name
-        return self.filterData()
-
-    # This method will filter the dataset to only include Pokemon of the desired ability.
-    def filterAbility(self, name):
-        if name == None:
-            self.abilityFilter = ""
-        else:
-            self.abilityFilter = name
-        return self.filterData()
-    
-    # This method sorts the dataframe by the specified column. Pokemon name is a secondary sorting specifier to ensure that order is consistent.
     def sortData(self, sortBy):
         self.data = self.data.sort_values(by = [sortBy, "Pokemon"])
         self.filtered = self.filtered.sort_values(by = [sortBy, "Pokemon"])
         return self.filtered
     
-    # This method resets the filters on the data and the view
     def filterReset(self):
         self.typeFilter = ""
         self.abilityFilter = ""
@@ -94,121 +136,19 @@ class PokemonData:
         self.filtered = self.data
         return self.filtered
 
-# Class to hold the dataframe for every Pokemon move as well as the filter methods.
-class MoveData:
-    def __init__(self, data):
-        self.data = data
-        self.data = self.data.fillna("-")
-        self.filtered = self.data
-
-        #Ability filters start as empty. "" indicates that the filter shouldn't be implemented
-        self.typeFilter = ""
-        self.categoryFilter = ""
-        self.nameFilter = ""
-
-    # Returns the data for the requested move if it is in the database
-    def description(self,name):
-        return self.data[self.data.index == name]
-
-    # Filters the datarame based on all of the specified filters.
-    def filterData(self):
-        # Resets the filtered data. This is so that updated filters won't rely on the old data.
-        self.filtered = self.data
-        
-        # The following three filters are applied to the original dataset. 
-        # Before each filter, the filtered dataframe is checked to make sure it isn't entirely empty as filtering an empty dataframe will remove columns.
-        # Filters the data based on the desired type. 
-        if (self.typeFilter != "") & (not self.filtered.empty):
-            self.filtered = self.filtered[(self.filtered['Type'] == self.typeFilter)]
-        
-        # Filters the data based on the desired ability
-        if (self.categoryFilter != "") & (not self.filtered.empty):
-            self.filtered = self.filtered[(self.filtered['Category'] == self.categoryFilter)]
-
-        # Filters the data based on if the names contain the string that they are being filtered against.
-        if (self.nameFilter != "") & (not self.filtered.empty):
-            self.filtered = self.filtered[self.filtered.index.str.contains(self.nameFilter, case=False)]
-        
-        return self.filtered
-
-        # This method will filter the dataset to only include moves with names including the desired string.
-    def filterName(self, name):
-        if name == None:
-            self.nameFilter = ""
-        else:
-            self.nameFilter = name
-        return self.filterData()
-    
-    # This method will filter the dataset to only include moves of the desired type.
-    def filterType(self, name):
-        if name == None:
-            self.typeFilter = ""
-        else:
-            self.typeFilter = name
-        return self.filterData()
-
-    # This method will filter the dataset to only include moves based on if they're physical or special.
-    def filterCategory(self, name):
-        if name == None:
-            self.categoryFilter = ""
-        else:
-            self.categoryFilter = name
-        return self.filterData()
-
-    # This method resets the filters on the data and the view
-    def filterReset(self):
-        self.typeFilter = ""
-        self.categoryFilter = ""
-        self.nameFilter = ""
-        self.filtered = self.data
-        return self.filtered
-
-# Class to hold the dataframe for every Pokemon item as well as the filter methods.
-class ItemData:
-    def __init__(self, data):
-        self.data = data
-        self.data = self.data.fillna("-")
-        self.filtered = self.data
-
-    # Returns the data for the requested item if it is in the database
-    def description(self,name):
-        return self.data[self.data.index == name]
-
-    # Filters the datarame based on all of the specified filters.
-    def filterData(self, name):
-        # Resets the filtered data. This is so that updated filters won't rely on the old data.
-        self.filtered = self.data
-        
-        # Filters the data based on if the names contain the string that they are being filtered against.
-        if (name != "") & (name != None) & (not self.filtered.empty):
-            self.filtered = self.filtered[self.filtered.index.str.contains(name, case=False)]
-        return self.filtered
-
-    # This method resets the filters on the data and the view
-    def filterReset(self):
-        self.filtered = self.data
-        return self.filtered
-
-
 # Class to hold every Pokemon dataframe in a single database.
 class PokemonDatabase:
     def __init__(self, excelName):
         # Reads in each sheet to store as data for each Pokemon species and lists of every move, ability, and item
         self.pokemonData = PokemonData(pd.read_excel(excelName, sheet_name=0, index_col=1))
         self.abilityList = pd.read_excel(excelName, sheet_name=1, index_col=0)
-        self.moveData = MoveData(pd.read_excel(excelName, sheet_name=2, index_col=0))
+        self.moveData = Data(pd.read_excel(excelName, sheet_name=2, index_col=0))
         self.natureList = pd.read_excel(excelName, sheet_name=3, index_col=0)
-        self.itemData = ItemData(pd.read_excel(excelName, sheet_name=4, index_col=0))
+        self.itemData = Data(pd.read_excel(excelName, sheet_name=4, index_col=0))
         
         self.abilityList = self.abilityList.fillna("-")
         self.natureList = self.natureList.fillna("-")
-        
-        
-        #Ability filters start as empty. "" indicates that the filter shouldn't be implemented
-        self.typeFilter = ""
-        self.abilityFilter = ""
-        self.nameFilter = ""
-    
+
     # Returns the data for the requested ability if it is in the database
     def abilityDescription(self,name):
         return self.abilityList[self.abilityList.index == name]
@@ -216,8 +156,6 @@ class PokemonDatabase:
     # Returns the data for the requested nature if it is in the database
     def natureDescription(self,name):
         return self.natureList[self.natureList.index == name]
-    
-
 
 
 # Class to handle individual Pokemon methods
@@ -236,7 +174,7 @@ class Pokemon:
         # Copy the stats from the pokemon into a dataframe for calculating stats altered by nature
         self.baseStats = self.pokemon[["Health","Attack","Defense","Special Attack","Special Defense","Speed"]].copy()
         
-        # Initialize variables to first available options or to None to prevent complications later
+        # Initialize variables
         self.pokemon['Nature'] = 'Hardy'
         self.abilities = self.pokemon['Ability'] = self.pokemon['Item'] = None
         self.pokemon['Move 1'] = self.pokemon['Move 2'] = self.pokemon['Move 3'] = self.pokemon['Move 4'] = None
@@ -247,7 +185,7 @@ class Pokemon:
         
     # Changes the specie of the Pokemon without fundamentally altering other aspects.
     def changeSpecies(self, name):
-        pokemonStats = self.database.pokemonData.stats(name)
+        pokemonStats = self.database.pokemonData.elementInfo(name)
         # Indicate that the Pokemon wasn't in the database
         if pokemonStats.empty:
             print(f"A Pokemon with the name {name} could not be found.")
@@ -266,11 +204,9 @@ class Pokemon:
         self.changeAbility(0)
         
         # Call to change nature to change the stats to reflect the new specie.
-        # This call uses the name of the currently held nature as the nature itself isn't being changed.
         self.changeNature(self.pokemon['Nature'][0])
         
-        # Indicate if there are any specific 
-        # Some 
+        # Indicate if there are any specific requirements for the current Pokemon's form.
         self.formNeeds(self.pokemon['Form'][0])
         
         self.exist = "Success"
@@ -278,14 +214,21 @@ class Pokemon:
         # Change the index names for the each dataframe for aesthetic purposes
         self.pokemon.index.names = ['Pokemon']
         return "Success"
+
+    # Determine if the Pokemon already has the move in its moveset
+    def isMoveInMoveset(self, name):
+        return ((self.pokemon['Move 1'][0] == name) |
+                (self.pokemon['Move 2'][0] == name) |
+                (self.pokemon['Move 3'][0] == name) | 
+                (self.pokemon['Move 4'][0] == name))
+
     
     # Takes in the name of the attack to be added and the index of the move to be changed
     # If the move already exists in the Pokemon's moveset or the index is beyond the possible range, nothing changes
     def changeMove(self, name, a):
-        # Only perform if the move isn't already in the Pokemon's moveset
-        if((self.pokemon['Move 1'][0] != name) & (self.pokemon['Move 2'][0] != name) &
-           (self.pokemon['Move 3'][0] != name) & (self.pokemon['Move 4'][0] != name) & (a <= 4)):
-            move = self.database.moveData.description(name)
+        # Only perform if the move isn't already in the Pokemon's moveset and the move index is valid.
+        if((not self.isMoveInMoveset(name)) & (a <= 4)):
+            move = self.database.moveData.elementInfo(name)
             
             # Make sure the move is in the database
             if not move.empty:
@@ -294,14 +237,17 @@ class Pokemon:
                 return "Success"
         return "Fail"
     
+    # Make sure ability index isn't out of range.
+    def getValidAbilityIndex(self, a):
+        if (a < 0) or (a >= len(self.abilities)):
+            return 0
+        else:
+            return a
+
     # Changes the ability of the Pokemon to another ability in the list. 
     # If the desired index is out of range, the first available ability will be selected
     def changeAbility(self, a):
-        # Make sure ability index isn't out of range.
-        if (a < 0) or (a >= len(self.abilities)):
-            ability = self.database.abilityDescription(self.abilities[0])
-        else:
-            ability = self.database.abilityDescription(self.abilities[a])
+        ability = self.database.abilityDescription(self.abilities[self.getValidAbilityIndex(a)])
         if not ability.empty:
             self.pokemon['Ability'] = ability.index[0]
             return "Success"
@@ -310,13 +256,17 @@ class Pokemon:
     
     # Changes the Pokemon's held item to be the new name, if it exists in the database.
     def changeItem(self, name):
-        if not self.database.itemData.description(name).empty:
+        if not self.database.itemData.elementInfo(name).empty:
             self.formMaintain(self.pokemon['Item'][0])
             self.pokemon['Item'] = name
             return "Success"
         self.pokemon['Item'] = None
         return "Fail"
     
+    def applyStatChanges(self, increasedStat, decreasedStat):
+        self.pokemon[increasedStat] = self.pokemon[increasedStat] + 0.1 * self.pokemon[increasedStat]
+        self.pokemon[decreasedStat] = self.pokemon[decreasedStat] - 0.1 * self.pokemon[decreasedStat]
+
     # Changes the Pokemon's nature to the requested name, if it exists in the database.
     # A Pokemon's nature will alter its stats based on what effect the nature will have.
     # Calling this will change the name and the effected stats to reflect the impact of the Pokemon's new nature.
@@ -333,8 +283,8 @@ class Pokemon:
 
             # Apply stat modifiers based on new nature
             if increasedStat != decreasedStat:
-                self.pokemon[increasedStat] = self.pokemon[increasedStat] + 0.1 * self.pokemon[increasedStat]
-                self.pokemon[decreasedStat] = self.pokemon[decreasedStat] - 0.1 * self.pokemon[decreasedStat]
+                self.applyStatChanges(increasedStat, decreasedStat)
+                
             return "Success"
         self.pokemon["Nature"] = "Hardy"
         return "Fail"
@@ -406,12 +356,21 @@ class PokemonTeam:
         except IndexError:
             pass
         return None
-    
+        
     # Change the species of the Pokemon at position 'a'
     def changeSpecies(self, name, a):
         # Make sure that a is in the possible range. 
         try:
             self.team[a].changeSpecies(name)
+            self.updateBasic()
+        except IndexError:
+            pass
+        return None
+    
+    # Swap the positions of the Pokemon at position 'a' and position 'b'
+    def swapPokemon(self, a, b):
+        try:
+            self.team[b], self.team[a] = self.team[a], self.team[b]
             self.updateBasic()
         except IndexError:
             pass
