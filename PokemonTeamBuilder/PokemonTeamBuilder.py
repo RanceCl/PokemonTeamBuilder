@@ -37,20 +37,15 @@ def pokemonSelect(pdb):
                 sg.Button('Filter by type', key='_filtertype_'),
                 sg.Button('Filter by ability', key='_filterability_'),
                 sg.Button('Reset Filters', key='_filterreset_')],]
-    return data, sg.Window("Pokemon List (Filters: Type - "+ pdb.pokemonData.typeFilter + "; Ability - " + pdb.pokemonData.abilityFilter + ")", layout)
+    return data, sg.Window("Pokemon List (Name: "+pdb.pokemonData.nameFilter + ", Type: "+pdb.pokemonData.typeFilter + ", Ability: "+pdb.pokemonData.abilityFilter + ")", layout)
     
 # This method will take in a filter and a specification on what type of filter it is.
 # Since filtering will always result in the window needing to be updated, this function will close the old pokemon list and return the new window
 def pokemonFilter(pdb, name, clarifier, window):
-    # Determine what type of filter has been given.
-    if clarifier == "Type":
-        pdb.pokemonData.filterType(name)
-    elif clarifier == "Ability":
-        pdb.pokemonData.filterAbility(name)
-    elif clarifier == "Name":
-        pdb.pokemonData.filterName(name)
-    else:
+    if clarifier == "Reset":
         pdb.pokemonData.filterReset()
+    else:
+        pdb.pokemonData.quickFilter(clarifier, name)
 
     # Update the window with the newly filtered list.
     window.close()
@@ -139,20 +134,15 @@ def moveSelect(pdb):
                sg.Button('Filter by type', key='_filtertype_'),
                sg.Button('Filter by category', key='_filtercategory_'),
                sg.Button('Reset Filters', key='_filterreset_')],]
-    return data, sg.Window("Move List (Filters: Type - "+ pdb.moveData.typeFilter + "; Category - " + pdb.moveData.categoryFilter + ")", layout)
+    return data, sg.Window("Move List (Name: " + pdb.moveData.nameFilter + ", " + ', '.join(f'{k}: {v}' for k,v in pdb.moveData.filters.items()) + ")", layout)
     
 # This method will take in a filter and a specification on what type of filter it is.
 # Since filtering will always result in the window needing to be updated, this function will close the old pokemon list and return the new window
 def moveFilter(pdb, name, clarifier, window):
-    # Determine what type of filter has been given.
-    if clarifier == "Type":
-        pdb.moveData.filterType(name)
-    elif clarifier == "Category":
-        pdb.moveData.filterCategory(name)
-    elif clarifier == "Name":
-        pdb.moveData.filterName(name)
-    else:
+    if clarifier == "Reset":
         pdb.moveData.filterReset()
+    else:
+        pdb.moveData.quickFilter(clarifier, name)
 
     # Update the window with the newly filtered list.
     window.close()
@@ -210,12 +200,11 @@ def itemSelect(pdb):
 # This method will take in a filter and a specification on what type of filter it is.
 # Since filtering will always result in the window needing to be updated, this function will close the old pokemon list and return the new window
 def itemFilter(pdb, name, clarifier, window):
-    # Determine what type of filter has been given.
-    if clarifier == "Name":
-        pdb.itemData.filterData(name)
-    else:
+    if clarifier == "Reset":
         pdb.itemData.filterReset()
-
+    else:
+        pdb.itemData.quickFilter(clarifier, name)
+    
     # Update the window with the newly filtered list.
     window.close()
     return itemSelect(pdb)
